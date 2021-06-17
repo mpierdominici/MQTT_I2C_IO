@@ -5,7 +5,7 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 
-#define DEBUGG
+//#define DEBUGG
 
 #define SDA_PIN D1
 #define SCL_PIN D2
@@ -70,7 +70,7 @@ WiFiClient wclient;
 PubSubClient mqtt_client(wclient);
 PCF8574 pcf20(PCF8574_ADRESS_WRITE); // instancia del modulo io i2c
 DHT dht(BOARD_DHT11_PIN, DHTTYPE); //instancia del sensor de temperatura y humedad
-
+bool sendTempHum=false;//true para iniciar medicion de temperatura y humedas
 
 
 
@@ -141,8 +141,11 @@ void callback(char* topic, byte* payload, unsigned int length)
   }else if(!strcmp(topic,"escritorio/salidas/ch3")){
     pcf20.write(BOARD_OUTPUT_CH_3,((payload[0]-48)==1));
     
+  }else if(!strcmp(topic,"escritorio/sensor/getTempHum")){
+    sendTempHum=true;    
   }
 
+  
 }
 
 
@@ -164,7 +167,7 @@ void reconnect()
             mqtt_client.subscribe("escritorio/salidas/ch2");
             mqtt_client.subscribe("escritorio/salidas/ch3");
             mqtt_client.subscribe("escritorio/sensor/getTempHum");
-            mqtt_client.subscribe("escritorio/sensor/getInputs");
+            //mqtt_client.subscribe("escritorio/sensor/getInputs");
             
             
 
@@ -222,11 +225,16 @@ void loop() {
         
       }
       
-    }
+    }   
+  }
+  if(sendTempHum){
+    sendTempHum=false;
+    float h = dht.readHumidity();
+    float t = dht.readTemperature();
     
+    mqtt_client.publish("escritorio/sensor/temp",String(t).c_str());
+    mqtt_client.publish("escritorio/sensor/hum",String(h).c_str());
     
-    //updetear los edge detector
-    //mandar data    
   }
  
   //float h = dht.readHumidity();
